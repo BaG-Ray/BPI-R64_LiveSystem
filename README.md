@@ -17,8 +17,9 @@ cd openwrt
 ```
 ###(2)编译Openwrt
 运行make menuconfig进入Openwrt的配置，如图
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/1.png)
+
 ![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/1.png)
+
 由于本文是基于BPI-R64开发板，因此在目标系统中选择MediaTek Ralink ARM,次系统中选择MT7622，目标描述中选择BPI-R64。由于配置极多，本文主要列举本项目需要的配置，如表
 
 ###(3)Openwrt的烧录下载
@@ -33,12 +34,28 @@ Openwrt的配置
 ------------
 ###(1)Openwrt的Overlay的扩容
 Squashfs（.sfs）是一套供Linux核心使用的GPL开源只读压缩文件系统，专门为一般的只读文件系统的使用而设计[22]。通常而言，Openwrt默认都采用squashfs格式作为文件系统，这在图4-2中进行编译的时候也可以选择。Squashfs文件系统的特点为只读和压缩。因此，作为一个只读型的文件系统，而要对Openwrt所作的操作属于写入。实际上是采用了/overlay分区，也就是说Openwrt的所有记录，配置和安装软件都是属于对/overlay分区的操作。因此若是系统的问题，如无法正常进入系统，或是进入恢复模式时，重新刷入也不会丢失之前的配置。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/2.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/2.png)
+
+
 事实上，Openwrt系统如图4-3所示分成了两个层：上层和下层。下层为只读层，也就是squashfs型openwrt，上层为可读可写层。下层中由两部分组成，sda1和sda2共同构成固件的大小，也就是编译生成的img文件的大小。其中sda1为kernel，sda2中firmware部分为固件的大小，后面的空间为未占用。但是由于下层未占用分区不能写入，因此划分出了/overlay分区，数据并不是直接写入下层，而是所有的读写都是在上层完成的。在系统启动的时候，固件会将所有的所需要的信息复制到/overlay分区，也就是上层中进行保存，比如说Openwrt根目录下的home,etc,usr等目录文件。真正空闲出来的才是剩下的未占用空间。/overlay分区最大的意义在于：由于有了上层逻辑层，就可以阻止用户对于kernel和固件区域的直接读写，进而在最终没有任何办法的时候还可以进行系统重置，重置时系统只需要抹除上层所有内容，系统重新从固件中取出初始文件复制到/overlay区中即可。若是/overlay分区剩余空间不足，则任何配置都不会被写入，也不能安装过多的软件，因此/overlay分区的扩容是非常有必要的。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/3.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/3.png)
+
+
 本文最初采用的为Openwrt官方发布的编译好的固件，然而由于/overlay分区空间不足，因此任何的操作都不会被记录，只要开发板重启，就会恢复到最初刷入的状态。故本文自行进行了Openwrt的编译，虽然自行编译的版本可以保存，然而/overlay的空间仅有80MB，这样的大小是无法安装一些大型的应用，如docker。且若此时安装的应用将/overlay分区完全占满，此时Openwrt将会完全进入只读状态，也符合上面对/overlay分区的讨论，此时就连卸载应用都无法做到，因此只能重新刷入固件。但是正如上述所讨论的，Openwrt所有的配置都存放在/overlay中，只是重刷是不会改变情况的，必须要将sd卡完全格式化后重刷才能恢复初始状态。在后续的扩容实践摸索中，在查找了大量的资料后，共发现四种扩容/overlay的方法。本文先是尝试了挂载点方法，图4-4为/overlay的扩容，事实上可以建立一个更大的分区，比如插入u盘，图4-4中对应为sda3，将/overlay指向sda3。然而在实践中，第一种方法并没有达到预期的效果，即使将/overlay指向了更大的空间，并且在luci中软件安装的页面中的剩余空间也同样显示扩容成功，实际上只是数值显示的更大，挂载点中/root仍指向/overlay，只是此时有两个不同的区域同时指向了/overlay，使得/overlay看起来变大了，实际上软件的安装仍安装在/root指向的/overlay中，而没有安装在扩容的空间。此时若是安装应用满了，仍然会触发openwrt变成只读的状态。经研究发现，方法一只适合于软路由，而不适合于本项目中的硬路由，因为如图4-3中软路由的硬盘管理只有两个，而本文中的却不只两个，这在删除sda2并重新将/overlay指向sda3时会出现问题，事实情况如图4-5。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/4.png)
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/5.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/4.png)
+
+
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/5.png)
+
+
 第二种是直接通过硬盘管理软件（如DiskGeniusEng，由于openwrt是linux系统，其文件格式为ext4，因此更适合在linux系统上使用resizepart 2指令）强行扩大/overlay空间，和方法一情况相同，该方法仍属于软路由。若是磁盘管理中只有sda1和sda2，根据图4-3，很容易就可以知道/overlay是存放于sda2，因此只要将空闲空间合并到sda2中即可扩容/overlay。
 第三种方法是将编译好的固件存放于linux中，在linux中使用扩容指令直接对编译好的固件进行补0扩充，如
 ```
@@ -46,8 +63,16 @@ dd if=/dev/zero bs=1G count=20 >> openwrt.img
 ```
 即直接增加固件的大小。然而在实践中这种方法会破坏固件，原因同样是不同于软路由中只有sda1和sda2。硬路由中最后的为mmcb1k1p128，装载的是BIOS，此方法扩容相当于把BIOS扩容。
 第三种方法虽然实践中并不成功，但却提供了一个很好的方向。由于/overlay的空间分配是在Openwrt第一次启动时会自动分配固件整体大小的一定比例的空间。因此，在编译Openwrt的时候，可以在menuconfig中选择将固件的大小，在生成固件的时候就决定固件整体的大小，如图4-2中就设定为20400MB。此时得到的/overlay空间大小为19.2G，结果如图4-6和图4-7。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/6.png)
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/7.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/6.png)
+
+
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/7.png)
+
+
 ###(2)DNS的配置
 由于Openwrt默认dns为127.0.0.1，通过ping指令可知无法访问互联网，因此也不能进行opkg update的更新或者软件包的安装。因此需要使用vim命令修改/etc/resolv.conf，将其改为8.8.8.8，如下修改即可ping成功。
 ```
@@ -56,7 +81,11 @@ nameserver 8.8.8.8
 ```
 ###(3)Wifi模式的开启
 Openwrt默认开启时是不启动wifi模式而只启动WAN模式，因此需要在Luci界面中网络的无线中手动开启，其他设备才能连入wlan，如图4-8。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/8.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/8.png)
+
+
 若是需要实现开机自动启动wifi，则需要在编译Openwrt时修改wireless的相关源码。通过/etc/config/wireless的信息：
 ```
 cat /etc/config/wireless
@@ -83,8 +112,16 @@ uci默认是没有挂载点和硬盘管理这两个界面的，然而这两个Lu
 ```
 opkg install luci-base luci-compat
 ```
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/9.png)
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/10.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/9.png)
+
+
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/10.png)
+
+
 ###opkg install luci-base luci-compat
 正如4.2.4所说，Openwrt中的软件包若是通过官方平台发布的，都可以通过opkg或者luci页面进行安装，非官方的软件也可以通过Luci上传或者使用SCP工具（如WinSCP）传到开发板进行本地安装。然而，在安装软件包的时候，系统会自动将所需依赖项进行下载，而某些依赖项可能因为某些原因无法下载，这时可以访问openwrt镜像库找到所需的依赖项，通过SCP工具将其放入lib目录中，重新下载安装即可。
 其次，在安装软件包的时候可能会出现内核版本不兼容的问题，如图4-11。图中为所需的内核的小版本号为110，而已安装的为108。而通过opkg update是不会更新内核的小版本号，因此需要访问Openwrt的镜像库
@@ -92,7 +129,11 @@ opkg install luci-base luci-compat
 downloads.openwrt.org/snapshots/targets/mediatek/mt7622/packages/
 ```
 找到所需对应的kernel的ipk文件，下载对应的内核通过Luci安装。若是小版本号后面的内容不同，也可以通过这种方法，或者通过SCP访问开发板，打开/usr/lib/opkg/status，将后面的内容全部替换为所需的内容即可，这是因为后面的字符为md5的验证，自行编译的版本和官方发布的版本的md5是一定不符的。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/11.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/11.png)
+
+
 
 4.2Nginx在硬件平台上的实现
 =========================
@@ -120,7 +161,11 @@ http {
 } 
 //listen监听的端口，实际上默认为80端口，然而80端口已经被luci占用，如果不修改为其他值，将会打不开luci。实际操作中表现为，浏览器访问192.168.1.1时将显示Nginx页面。因此此处设定为8082端口，此时访问192.168.1.1即可进入luci管理页面，访问192.168.1.1:8082即可访问Nginx页面。使用netstat指令可以看到8082可以被监听到，且识别为nginx服务器，如图4-12。
 ```
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/12.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/12.png)
+
+
 
 4.2.2Openwrt中关于Nginx拓展模块的支持
 -------------------------------------
@@ -139,9 +184,17 @@ RTMP协议在Nginx上的实现
 Nginx-RTMP-module模块的安装
 --------------------------
 正如4.2.2中所说，Nginx-RTMP-module正是Nginx中的一个模块。因此只能通过编译的方法安装Nginx-RTMP-module。本文将github克隆在了openwrt中。
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/13.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/13.png)
+
+
 然而，实际上Openwrt在编译中还是提供并可以选择安装Nginx-RTMP-module模块的。在Openwrt的编译程序中，可以使用“\”进行搜索，再输入RTMP得到的结果如图
-![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/14.png)
+
+
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/14.png)
+
+
 这表明，Nginx-RTMP-module的安装位置在
 ```
 Network -> Web Servers/Proxies -> nginx-ssl -> Configuration -> Nginx-RTMP-module
