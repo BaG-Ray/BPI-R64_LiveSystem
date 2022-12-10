@@ -87,9 +87,9 @@ opkg install luci-base luci-compat
 ###opkg install luci-base luci-compat
 正如4.2.4所说，Openwrt中的软件包若是通过官方平台发布的，都可以通过opkg或者luci页面进行安装，非官方的软件也可以通过Luci上传或者使用SCP工具（如WinSCP）传到开发板进行本地安装。然而，在安装软件包的时候，系统会自动将所需依赖项进行下载，而某些依赖项可能因为某些原因无法下载，这时可以访问openwrt镜像库找到所需的依赖项，通过SCP工具将其放入lib目录中，重新下载安装即可。
 其次，在安装软件包的时候可能会出现内核版本不兼容的问题，如图4-11。图中为所需的内核的小版本号为110，而已安装的为108。而通过opkg update是不会更新内核的小版本号，因此需要访问Openwrt的镜像库
-···
+```
 downloads.openwrt.org/snapshots/targets/mediatek/mt7622/packages/
-···
+```
 找到所需对应的kernel的ipk文件，下载对应的内核通过Luci安装。若是小版本号后面的内容不同，也可以通过这种方法，或者通过SCP访问开发板，打开/usr/lib/opkg/status，将后面的内容全部替换为所需的内容即可，这是因为后面的字符为md5的验证，自行编译的版本和官方发布的版本的md5是一定不符的。
 
 4.2Nginx在硬件平台上的实现
@@ -97,12 +97,12 @@ downloads.openwrt.org/snapshots/targets/mediatek/mt7622/packages/
 Nginx的安装和配置
 -----------------
 如同4.1.2中（5）所说的，Nginx的安装可以从Luci的软件包中搜索安装，也可以通过opkg进行安装。输入nginx -v，如果出现以下信息，则表明安装成功。
-···
+```
 root@Openwrt:/# nginx -v
 Nginx version: nginx/1.21.3 (x86_64-pc-linux-gnu)
-···
+```
 在安装完成nginx后，即可配置Nginx。Nginx的配置文件位于/etc/nginx中。其中uci.conf为测试配置文件，结合测试配置文件和Nginx官方文档。并由2.4.3中，可知Nginx是有四个模块构成，配置nginx.conf实际上就是对Nginx的各个模块进行配置。对应的user等部分为核心模块，events对应的为事件模块，http对应均衡器模块，后面补充的RTMP为协议模块。以下为nginx.conf配置内容：
-···
+```
 user  root;  
 //user用于设置master进程启动后，进程运行在那个用户和用户组下。本文使用root用户和用户组启动Nginx。
 worker_processes  1;  
@@ -117,19 +117,19 @@ http {
 }
 } 
 //listen监听的端口，实际上默认为80端口，然而80端口已经被luci占用，如果不修改为其他值，将会打不开luci。实际操作中表现为，浏览器访问192.168.1.1时将显示Nginx页面。因此此处设定为8082端口，此时访问192.168.1.1即可进入luci管理页面，访问192.168.1.1:8082即可访问Nginx页面。使用netstat指令可以看到8082可以被监听到，且识别为nginx服务器，如图4-12。
-···
+```
 
 4.2.2Openwrt中关于Nginx拓展模块的支持
 -------------------------------------
 Openwrt中的Nginx和其他嵌入式平台中的Nginx有不同。由于Nginx的所有软件包，无论通过Luci平台还是SCP本地安装，本质上都是通过opkg进行安装。因此如果没有对应的软件包的ipk文件，是无法安装的。而Nginx的拓展模块，如本文所需的Nginx-RTMP-module模块在Luci平台是搜索不到的，即使是在其发布平台的github上都没有提供ipk文件。其他嵌入式平台，如CentOS中的Nginx，可以通过./configure进行配置Nginx的拓展模块，因此可以github上克隆下来再进行拓展模块的安装。然而Openwrt中的Nginx并没有这个功能，这意味着只能从编译的时候，将拓展模块编入Nginx的配置中，让Openwrt在编译的时候，把Nginx的拓展模块和Nginx一起编入Openwrt固件。
 Nginx在Openwrt中的编译位置在
-···
+```
 /openwrt/feeds/packages/net/nginx/makefile
-···
+```
 事先从github上下载对应的拓展模块放入嵌入式系统中，找到代码中添加拓展模块的位置，在最后添加
-···
+```
     --add-module=模块文件位置/模块文件名
-···
+```
 
 RTMP协议在Nginx上的实现
 =======================
@@ -140,11 +140,11 @@ Nginx-RTMP-module模块的安装
 然而，实际上Openwrt在编译中还是提供并可以选择安装Nginx-RTMP-module模块的。在Openwrt的编译程序中，可以使用“\”进行搜索，再输入RTMP得到的结果如图
 
 这表明，Nginx-RTMP-module的安装位置在
-···
+```
 Network -> Web Servers/Proxies -> nginx-ssl -> Configuration -> Nginx-RTMP-module
-···
+```
 事实上，这个Configuration中包含了所有的Nginx模块。经过再次编译后，再次打开nginx.conf中，可以看到后面自动添加了如下信息，表明Nginx-RTMP-module已经安装成功。
-···
+```
 location /stat {
             RTMP_stat all;
             RTMP_stat_stylesheet stat.xsl;
@@ -161,12 +161,12 @@ location /stat {
         location / {
             root /root/nginx-RTMP-module-1.2.1/test/www;
         }
-···
+```
 
 4.3.2RTMP的配置
 ---------------
 如果上述没有安装Nginx-RTMP-module模块，则Nginx将不能开启RTMP，即使在Nginx.conf中添加如下的RTMP配置信息，Nginx也会返回不能识别RTMP的错误。因此在Nginx-RTMP-module安装成功后，打开Nginx.conf并添加如下信息，并且RTMP是和HTTP同级。RTMP和HTTP同级的原因，同样是因为2.4.3中所涉及的Nginx的模块化架构，事件模块（Event），协议模块（RTMP）和负载均衡器（HTTP）是同一级别的。
-···
+```
 RTMP {
     server {
         listen 1935;  
@@ -180,21 +180,21 @@ RTMP {
                             }
             }
 }
-···
+```
 
 4.4麦克风的挂载和推流
 ---------------------
 使用指令查看麦克风的设备
-···
+```
 Arecord -l
 List of CAPTURE Hardware Devices 
 xcb_connection_has_error() 返回真
 card 3: Microphone [USB Microphone], device 0: USB Audio [USB Audio]
   Subdevices: 1/1
   Subdevice #0: subdevice #0
-···
+```
 因此，可以知道麦克风的设备号为card 3, device 0。对应即为hw:3,0。之后使用FFmpeg指令将麦克风信息推向RTMP服务器。
-···
+```
 ffmpeg -f alsa -ar 16000 -ac 1 -i hw:3,0 -f flv "rtmp://192.168.1.1/myapp"
-···
+```
 该命令中“-f ALSA”表示先输入通过ALSA麦克风采集到的音频数据；“-ar 16000”表示ALSA的音频采样率为16000Hz；“-ac 1”表示采样的为单声道；“-i hw:3,0”表示采样的设备为hw3,0，即麦克风；“-f flv”"RTMP://192.168.1.1/myapp"”表明以flv的格式推流到RTMP服务器上。
