@@ -18,6 +18,7 @@ cd openwrt
 ###(2)编译Openwrt
 运行make menuconfig进入Openwrt的配置，如图
 ![](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/1.png)
+![contents](https://github.com/BaG-Ray/BPI-R64_LiveSystem/raw/master/1.png)
 由于本文是基于BPI-R64开发板，因此在目标系统中选择MediaTek Ralink ARM,次系统中选择MT7622，目标描述中选择BPI-R64。由于配置极多，本文主要列举本项目需要的配置，如表
 
 ###(3)Openwrt的烧录下载
