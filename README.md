@@ -183,7 +183,7 @@ RTMP {
 使用指令查看麦克风的设备
 ···
 Arecord -l
-**** List of CAPTURE Hardware Devices ****
+List of CAPTURE Hardware Devices 
 xcb_connection_has_error() 返回真
 card 3: Microphone [USB Microphone], device 0: USB Audio [USB Audio]
   Subdevices: 1/1
