@@ -27,6 +27,7 @@ make V=s -j8  //编译生成Openwrt固件
 /openwrt/bin/targets/mediatek/mt7622/openwrt-mediatek-mt7622-bananapi_bpi-r64-sdcard.img.gz
 ```
 本文中所采取的方法为通过烧录软件（如Win32DiskImager）,即可将固件烧入sd卡中，并设置通过sd卡启动固件即可成功加载Openwrt。亦可设置通过eMMC启动，将网线连入路由器的WAN口，通过TFTP协议将固件刷入flash即可。通过串口软件（如Putty）连接开发板的串口即可查看状态。
+
 Openwrt的配置
 ------------
 ###(1)Openwrt的Overlay的扩容
@@ -129,6 +130,7 @@ Nginx在Openwrt中的编译位置在
 ···
     --add-module=模块文件位置/模块文件名
 ···
+
 RTMP协议在Nginx上的实现
 =======================
 Nginx-RTMP-module模块的安装
@@ -160,6 +162,7 @@ location /stat {
             root /root/nginx-RTMP-module-1.2.1/test/www;
         }
 ···
+
 4.3.2RTMP的配置
 ---------------
 如果上述没有安装Nginx-RTMP-module模块，则Nginx将不能开启RTMP，即使在Nginx.conf中添加如下的RTMP配置信息，Nginx也会返回不能识别RTMP的错误。因此在Nginx-RTMP-module安装成功后，打开Nginx.conf并添加如下信息，并且RTMP是和HTTP同级。RTMP和HTTP同级的原因，同样是因为2.4.3中所涉及的Nginx的模块化架构，事件模块（Event），协议模块（RTMP）和负载均衡器（HTTP）是同一级别的。
@@ -178,6 +181,7 @@ RTMP {
             }
 }
 ···
+
 4.4麦克风的挂载和推流
 ---------------------
 使用指令查看麦克风的设备
